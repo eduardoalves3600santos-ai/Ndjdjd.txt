@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>FNF · Botplay</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #111;
+  color: #e9e9f2;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+#app {
+  display: flex; flex-direction: column;
+  width: 100vw; height: 100vh; height: 100dvh;
+  will-change: transform;
+}
+
+@media (orientation: portrait) {
+  #app {
+    position: fixed;
+    width: 100vh;
+    height: 100vw;
+    top: calc(50vh - 50vw);
+    left: calc(50vw - 50vh);
+    width: 100dvh;
+    height: 100dvw;
+    top: calc(50dvh - 50dvw);
+    left: calc(50dvw - 50dvh);
+    transform: rotate(90deg);
+    transform-origin: 50% 50%;
+  }
+}
+
+#topbar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: .5em;
+  padding: .45em .7em;
+  font-size: clamp(10px, 2.1vh, 15px);
+  background: linear-gradient(180deg, #1d1d24 0%, #131318 100%);
+  border-bottom: 2px solid #26262f;
+  z-index: 20; overflow: hidden;
+  flex-wrap: nowrap;
+}
+.brand {
+  font-weight: 900; letter-spacing: .08em;
+  font-size: 1.05em; color: #fff; white-space: nowrap;
+  text-shadow: 0 0 14px rgba(255,61,129,.85);
+  flex: 0 0 auto;
+}
+.brand span { color: #ff3d81; }
+
+.btn {
+  font: inherit; font-weight: 800; font-size: .95em;
+  padding: .5em .8em; border-radius: .7em;
+  border: 2px solid #3b3b48;
+  background: linear-gradient(180deg, #2c2c38 0%, #1c1c24 100%);
+  color: #ececf4; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: .35em;
+  transition: transform .12s ease, border-color .12s ease;
+  -webkit-user-select: none; user-select: none;
+  flex: 0 0 auto;
+}
+.btn:active { transform: translateY(1px) scale(.98); }
+.btn.audio { border-color: #22c9c0; }
+.btn.audio:hover { border-color: #4ff0e6; }
+.btn.chart { border-color: #e0a52a; }
+.btn.chart:hover { border-color: #ffcb52; }
+.btn.fullscreen { border-color: #a855f7; }
+.btn.fullscreen:hover { border-color: #c084fc; }
+.btn.replay-top { border-color: #ff3d81; }
+.btn.replay-top:hover { border-color: #ff6ba1; }
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important; height: 1px !important;
+  padding: 0 !important; margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+#status {
+  margin-left: auto; min-width: 0;
+  font-size: .85em; font-weight: 600; color: #8d8da3;
+  text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+#stage {
+  position: relative;
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: row; overflow: hidden;
+  background:
+    radial-gradient(120% 95% at 22% 45%, #241335 0%, rgba(36,19,53,0) 62%),
+    radial-gradient(120% 95% at 78% 45%, #0e2a33 0%, rgba(14,42,51,0) 62%),
+    #0b0b0e;
+}
+#notesCanvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1; pointer-events: none;
+  will-change: transform;
+}
+.side {
+  position: relative; flex: 1 1 50%; min-width: 0;
+  z-index: 2; pointer-events: none;
+}
+.side + .side::before {
+  content: ""; position: absolute; left: 0; top: 6%; bottom: 6%; width: 2px;
+  background: linear-gradient(180deg, transparent, #2c2c39 20%, #2c2c39 80%, transparent);
+}
+#hint {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1em; text-align: center;
+  font-size: clamp(11px, 2.6vh, 20px);
+  font-weight: 700; letter-spacing: .02em;
+  color: #4e4e63; z-index: 5; pointer-events: none;
+}
+#fps {
+  position: absolute; bottom: 8px; right: 8px;
+  padding: 4px 9px;
+  background: rgba(0,0,0,.72);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px; font-weight: bold;
+  color: #4ff0e6; z-index: 100; pointer-events: none;
+  text-shadow: 0 0 6px rgba(79,240,230,.5);
+  white-space: nowrap; line-height: 1.3;
+}
+#speedInfo {
+  position: absolute; bottom: 8px; left: 8px;
+  padding: 4px 9px;
+  background: rgba(0,0,0,.72);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px; font-weight: bold;
+  color: #ffcb52; z-index: 100; pointer-events: none;
+  text-shadow: 0 0 6px rgba(255,203,82,.5);
+  white-space: nowrap; line-height: 1.3;
+  display: none;
+}
+#speedInfo.show { display: block; }
+
+#replayOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  animation: fadeIn .3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.replay-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2vh;
+  padding: 3vh 4vw;
+  background: linear-gradient(180deg, #1d1d24 0%, #131318 100%);
+  border: 3px solid #ff3d81;
+  border-radius: 20px;
+  box-shadow: 0 0 60px rgba(255, 61, 129, 0.5);
+}
+.replay-title {
+  font-size: clamp(18px, 3.8vh, 30px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(255, 61, 129, 0.9);
+  text-align: center;
+}
+.replay-actions {
+  display: flex;
+  gap: 1.5vw;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+.replay-btn {
+  font: inherit;
+  font-weight: 900;
+  font-size: clamp(16px, 3.2vh, 26px);
+  padding: 1.2vh 2.5vw;
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: transform .12s, box-shadow .12s;
+  white-space: nowrap;
+}
+.replay-btn-replay {
+  background: linear-gradient(180deg, #ff3d81 0%, #c24b99 100%);
+  box-shadow: 0 6px 24px rgba(255, 61, 129, 0.5);
+}
+.replay-btn-replay:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 61, 129, 0.8);
+}
+.replay-btn-back {
+  background: linear-gradient(180deg, #4a4a5a 0%, #2c2c38 100%);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+}
+.replay-btn-back:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.85);
+}
+.replay-btn:active {
+  transform: translateY(1px) scale(.97);
+}
+
+#loadingOverlay {
+  position: fixed; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 14px;
+  background: rgba(0,0,0,.92); z-index: 9998;
+  color: #fff; font-weight: bold;
+  text-align: center; padding: 20px;
+}
+#loadingOverlay.show { display: flex; }
+#loadingOverlay .spin {
+  width: 44px; height: 44px;
+  border: 4px solid #333;
+  border-top-color: #ff3d81;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) { .brand { display: none; } }
+@media (max-width: 700px) {
+  .btn { padding: .4em .6em; font-size: .85em; }
+}
+@media (max-width: 520px) {
+  .btn { padding: .35em .5em; font-size: .78em; }
+  #status { font-size: .72em; }
+  .btn .full-label { display: none; }
+  .replay-btn { font-size: clamp(14px, 2.8vh, 20px); padding: 1vh 2vw; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header id="topbar">
+    <div class="brand">FNF <span>BOTPLAY</span></div>
+    <label class="btn audio" for="fileAudio" id="lblAudio">🎵 <span class="full-label">Áudio</span></label>
+    <label class="btn chart" for="fileChart" id="lblChart">📄 <span class="full-label">Chart</span></label>
+    <button class="btn fullscreen" id="btnFullscreen" type="button">⛶ <span class="full-label">Tela cheia</span></button>
+    <button class="btn replay-top" id="btnReplay" type="button">↻ <span class="full-label">Repetir</span></button>
+    <div id="status">Aguardando arquivos…</div>
+  </header>
+
+  <main id="stage">
+    <canvas id="notesCanvas"></canvas>
+    <section class="side"></section>
+    <section class="side"></section>
+    <div id="hint">Carregue o ÁUDIO (.ogg) e o CHART (.json) para iniciar o Botplay</div>
+    <div id="fps">-- FPS</div>
+    <div id="speedInfo">--</div>
+  </main>
+</div>
+
+<div id="loadingOverlay">
+  <div class="spin"></div>
+  <div id="loadingText">Processando…</div>
+</div>
+
+<input type="file" id="fileAudio" accept=".ogg,.mp3,.wav,.m4a,audio/*" class="sr-only">
+<input type="file" id="fileChart" accept=".json,application/json" class="sr-only">
+
+<script>
+(function () {
+  'use strict';
+
+  const COLORS = ['#c24b99', '#00e0ff', '#12fa05', '#f9393f'];
+  const ROT    = [-90, 180, 0, 90];
+  const SIDE_KEYS = ['opponent', 'player'];
+
+  const IS_MOBILE = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+  const MAX_DPR   = IS_MOBILE ? 1.5 : 2.0;
+  const SUSTAIN_WIDTH_RATIO = 0.42;
+  const BASE_PX_PER_MS = 0.62;
+  const MIN_TRAVEL = 520;
+  const APPROACH_MIN = 420;
+  const APPROACH_MAX = 3000;
+
+  const stage       = document.getElementById('stage');
+  const canvas      = document.getElementById('notesCanvas');
+  const ctx         = canvas.getContext('2d', { alpha: true });
+  const hintEl      = document.getElementById('hint');
+  const statusEl    = document.getElementById('status');
+  const fpsEl       = document.getElementById('fps');
+  const speedInfoEl = document.getElementById('speedInfo');
+  const fileAudio   = document.getElementById('fileAudio');
+  const fileChart   = document.getElementById('fileChart');
+  const lblAudio    = document.getElementById('lblAudio');
+  const lblChart    = document.getElementById('lblChart');
+  const btnFs       = document.getElementById('btnFullscreen');
+  const btnReplay   = document.getElementById('btnReplay');
+  const loadingEl   = document.getElementById('loadingOverlay');
+  const loadingTxt  = document.getElementById('loadingText');
+
+  let stageW = 0, stageH = 0;
+  let ARROW_SIZE   = 55;
+  let SUSTAIN_W    = 24;
+  let SUSTAIN_SX_OFF = 0;
+  let RECEPTOR_TOP = 24;
+  let PX_PER_MS    = BASE_PX_PER_MS;
+  let APPROACH_MS  = 1400;
+  let currentDpr   = 1;
+  let currentSpeed = 2.0;
+
+  const laneX = { opponent: [0,0,0,0], player: [0,0,0,0] };
+  const arrowSprites    = [];
+  const receptorSprites = [];
+
+  let audioFile   = null;
+  let audioCtx    = null;
+  let audioBuffer = null;
+  let audioSource = null;
+  let audioStartT = 0;
+  let currentPlayId = 0;
+
+  let chart      = null;
+  let pending    = [];
+  let active     = [];
+  let pendingIdx = 0;
+  let totalNotes = 0;
+  let longNotes  = 0;
+
+  let rafId   = 0;
+  let running = false;
+
+  let fpsFrames   = 0;
+  let fpsLastTime = 0;
+
+  function setStatus(msg) { statusEl.textContent = msg; }
+
+  function fmtNum(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+    return String(n);
+  }
+
+  function showLoading(txt) { loadingTxt.textContent = txt; loadingEl.classList.add('show'); }
+  function hideLoading()    { loadingEl.classList.remove('show'); }
+  function yieldFrame()     { return new Promise(function (r) { setTimeout(r, 40); }); }
+
+  function updateSpeedInfo() {
+    if (!speedInfoEl) return;
+    speedInfoEl.classList.add('show');
+    speedInfoEl.textContent = '⚡ ' + currentSpeed.toFixed(2) + 'x · ' +
+                              Math.round(PX_PER_MS * 1000) + ' px/s';
+  }
+
+  function getAudioContext() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) throw new Error('Web Audio API não suportado');
+      audioCtx = new AC();
+    }
+    return audioCtx;
+  }
+
+  function unlockAudio() {
+    try {
+      const c = getAudioContext();
+      if (c.state === 'suspended') c.resume().catch(function () {});
+    } catch (e) {}
+  }
+
+  function sniffAudioFormat(buffer) {
+    const b = new Uint8Array(buffer.slice(0, Math.min(16, buffer.byteLength)));
+    if (b.length >= 4 && b[0] === 0x4F && b[1] === 0x67 && b[2] === 0x67 && b[3] === 0x53) return 'OGG';
+    if (b.length >= 3 && b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) return 'MP3';
+    if (b.length >= 2 && b[0] === 0xFF && (b[1] & 0xE0) === 0xE0) return 'MP3';
+    if (b.length >= 4 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46) return 'WAV';
+    if (b.length >= 8 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) return 'M4A';
+    return 'desconhecido';
+  }
+
+  function drawArrowShape(g, size, dir, fill, stroke, strokeW) {
+    const s = size / 100;
+    g.save();
+    g.translate(size / 2, size / 2);
+    g.rotate(ROT[dir] * Math.PI / 180);
+    g.translate(-size / 2, -size / 2);
+
+    g.beginPath();
+    g.moveTo(50 * s,  7 * s);
+    g.lineTo(93 * s, 50 * s);
+    g.lineTo(70 * s, 50 * s);
+    g.lineTo(70 * s, 93 * s);
+    g.lineTo(30 * s, 93 * s);
+    g.lineTo(30 * s, 50 * s);
+    g.lineTo( 7 * s, 50 * s);
+    g.closePath();
+
+    g.fillStyle = fill;
+    g.fill();
+    g.strokeStyle = stroke;
+    g.lineWidth = strokeW;
+    g.lineJoin = 'round';
+    g.stroke();
+    g.restore();
+  }
+
+  function buildAllSprites() {
+    const px      = Math.max(2, Math.round(ARROW_SIZE * currentDpr));
+    const strokeW = Math.max(2, 6 / 100 * px);
+
+    for (let d = 0; d < 4; d++) {
+      const nc = document.createElement('canvas');
+      nc.width = nc.height = px;
+      drawArrowShape(nc.getContext('2d'), px, d, COLORS[d], 'rgba(0,0,0,0.6)', strokeW);
+      arrowSprites[d] = nc;
+
+      const ic = document.createElement('canvas');
+      ic.width = ic.height = px;
+      drawArrowShape(ic.getContext('2d'), px, d, '#5b5b6b', 'rgba(0,0,0,0.6)', strokeW);
+      receptorSprites[d] = ic;
+    }
+  }
+
+  function resizeCanvas() {
+    if (!stageW || !stageH) return;
+    canvas.width  = Math.floor(stageW * currentDpr);
+    canvas.height = Math.floor(stageH * currentDpr);
+    ctx.setTransform(currentDpr, 0, 0, currentDpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'low';
+  }
+
+  function layout() {
+    stageW = stage.clientWidth;
+    stageH = stage.clientHeight;
+    if (!stageW || !stageH) return;
+
+    const newDpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+
+    const byWidth  = (stageW / 2) / 4 * 0.72;
+    const byHeight = stageH / 6.8;
+    const arrow    = Math.max(18, Math.min(byWidth, byHeight, 90));
+    const gap      = Math.max(3, arrow * 0.13);
+
+    const sizeChanged = Math.abs(arrow - ARROW_SIZE) > 0.5;
+    const dprChanged  = newDpr !== currentDpr;
+
+    ARROW_SIZE   = arrow;
+    currentDpr   = newDpr;
+    RECEPTOR_TOP = Math.max(6, stageH * 0.06);
+
+    SUSTAIN_W      = ARROW_SIZE * SUSTAIN_WIDTH_RATIO;
+    SUSTAIN_SX_OFF = (ARROW_SIZE - SUSTAIN_W) * 0.5;
+
+    currentSpeed = (chart && chart.speed > 0) ? chart.speed : 2.0;
+    const targetPxPerMs = BASE_PX_PER_MS * (currentSpeed / 2.0);
+    const visibleTravel = Math.max(50, stageH - RECEPTOR_TOP - ARROW_SIZE);
+    const travel = Math.max(MIN_TRAVEL, visibleTravel);
+    APPROACH_MS = Math.max(APPROACH_MIN, Math.min(APPROACH_MAX, travel / targetPxPerMs));
+    PX_PER_MS = travel / APPROACH_MS;
+
+    const halfW  = stageW / 2;
+    const totalW = 4 * ARROW_SIZE + 3 * gap;
+    const startX = (halfW - totalW) / 2;
+
+    for (let d = 0; d < 4; d++) {
+      laneX.opponent[d] = startX + d * (ARROW_SIZE + gap);
+      laneX.player[d]   = halfW + startX + d * (ARROW_SIZE + gap);
+    }
+
+    resizeCanvas();
+    if (sizeChanged || dprChanged) buildAllSprites();
+    updateSpeedInfo();
+  }
+
+  function parseChart(json) {
+    const songData = json.song || json;
+    const sections = songData.notes || songData.sectionNotes || [];
+    if (!Array.isArray(sections)) throw new Error('estrutura "notes" não encontrada');
+
+    const out = [];
+    let longs = 0;
+
+    for (let s = 0; s < sections.length; s++) {
+      const sec = sections[s];
+      if (!sec) continue;
+      const mustHit = !!sec.mustHitSection;
+      const secNotes = sec.sectionNotes || [];
+
+      for (let i = 0; i < secNotes.length; i++) {
+        const n = secNotes[i];
+        if (!Array.isArray(n) || n.length < 2) continue;
+
+        const time = Number(n[0]);
+        let   data = Number(n[1]);
+        if (!isFinite(time) || !isFinite(data)) continue;
+
+        const sustain = n.length >= 3 ? Math.max(0, Number(n[2]) || 0) : 0;
+
+        let side;
+        if (data >= 4) { data -= 4; side = mustHit ? 'opponent' : 'player'; }
+        else           { side = mustHit ? 'player'   : 'opponent'; }
+        if (data < 0 || data > 3) continue;
+
+        if (sustain > 0) longs++;
+        out.push({ time: time, dir: data, side: side, sustain: sustain, hit: false });
+      }
+    }
+
+    out.sort(function (a, b) { return a.time - b.time; });
+
+    const rawSpeed = Number(songData.speed);
+    const speed    = isFinite(rawSpeed) && rawSpeed > 0 ? rawSpeed : 2.0;
+
+    return {
+      notes: out,
+      longCount: longs,
+      speed: speed,
+      name: songData.song || 'Unknown'
+    };
+  }
+
+  fileAudio.addEventListener('change', async function (e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+
+    if (!/\.(ogg|mp3|wav|m4a)$/i.test(f.name)) {
+      setStatus('❌ Formato inválido. Use .ogg, .mp3 ou .wav');
+      return;
+    }
+
+    try {
+      const arrayBuffer = await f.arrayBuffer();
+      const format = sniffAudioFormat(arrayBuffer);
+      console.log('[Áudio] Formato:', format, '· Tamanho:', arrayBuffer.byteLength, 'bytes');
+
+      showLoading('Decodificando áudio…');
+      await yieldFrame();
+
+      const c = getAudioContext();
+      let decoded;
+      try {
+        decoded = await c.decodeAudioData(arrayBuffer);
+      } catch (err1) {
+        try {
+          const copy = await f.arrayBuffer();
+          decoded = await c.decodeAudioData(copy);
+        } catch (err2) {
+          throw new Error('codec não suportado (' + format + '). Converta para .mp3.');
+        }
+      }
+
+      audioBuffer = decoded;
+      audioFile   = f;
+      hideLoading();
+      setStatus('🎵 Áudio OK: ' + f.name + ' (' + audioBuffer.duration.toFixed(1) + 's)');
+      maybeStart();
+
+    } catch (err) {
+      hideLoading();
+      console.error('[Áudio] Falha:', err);
+      let hint = '';
+      if (/\.ogg$/i.test(f.name)) hint = ' O navegador pode não suportar OGG. Converta para .mp3.';
+      setStatus('❌ ' + (err.message || err) + hint);
+    }
+  });
+
+  fileChart.addEventListener('change', async function (e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+
+    if (!/\.json$/i.test(f.name)) {
+      setStatus('❌ Chart inválido — selecione um arquivo .json');
+      return;
+    }
+
+    try {
+      showLoading('Lendo chart…');
+      await yieldFrame();
+
+      const text = await f.text();
+      const json = JSON.parse(text);
+      const parsed = parseChart(json);
+      if (!parsed.notes.length) throw new Error('o chart não contém notas');
+
+      chart = parsed;
+      hideLoading();
+      layout();
+
+      setStatus('📄 Chart OK: ' + f.name +
+        ' (' + fmtNum(parsed.notes.length) + ' notas' +
+        (parsed.longCount ? ', ' + fmtNum(parsed.longCount) + ' longas' : '') +
+        ' · speed ' + parsed.speed.toFixed(2) + ')');
+      maybeStart();
+    } catch (err) {
+      hideLoading();
+      setStatus('❌ Chart inválido: ' + err.message);
+    }
+  });
+
+  function maybeStart() {
+    if (audioBuffer && chart) startGame();
+    else if (audioBuffer) setStatus('🎵 Áudio pronto — agora carregue o Chart (.json)');
+    else if (chart)       setStatus('📄 Chart pronto — agora carregue o Áudio (.ogg)');
+  }
+
+  function showStartOverlay() {
+    const ex = document.getElementById('startOverlay');
+    if (ex) ex.remove();
+
+    const ov = document.createElement('div');
+    ov.id = 'startOverlay';
+    ov.style.cssText =
+      'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(0,0,0,.85);z-index:9999;cursor:pointer;color:#fff;' +
+      'font-size:clamp(18px,4vw,32px);font-weight:bold;letter-spacing:.1em;' +
+      'font-family:inherit;text-align:center;padding:20px;';
+    ov.textContent = '▶ CLIQUE PARA INICIAR';
+
+    ov.addEventListener('click', async function () {
+      ov.remove();
+      try {
+        if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+        actuallyStart();
+      } catch (err) {
+        setStatus('❌ Erro ao iniciar: ' + err.message);
+      }
+    });
+
+    document.body.appendChild(ov);
+  }
+
+  function showReplayOverlay() {
+    const ex = document.getElementById('replayOverlay');
+    if (ex) ex.remove();
+
+    const ov = document.createElement('div');
+    ov.id = 'replayOverlay';
+
+    const panel = document.createElement('div');
+    panel.className = 'replay-panel';
+
+    const title = document.createElement('div');
+    title.className = 'replay-title';
+    title.textContent = 'MÚSICA FINALIZADA';
+
+    const actions = document.createElement('div');
+    actions.className = 'replay-actions';
+
+    const backBtn = document.createElement('button');
+    backBtn.className = 'replay-btn replay-btn-back';
+    backBtn.type = 'button';
+    backBtn.textContent = '← Voltar';
+    backBtn.addEventListener('click', function () {
+      ov.remove();
+      goBackToStart();
+    });
+
+    const replayBtn = document.createElement('button');
+    replayBtn.className = 'replay-btn replay-btn-replay';
+    replayBtn.type = 'button';
+    replayBtn.textContent = '↻ Repetir';
+    replayBtn.addEventListener('click', function () {
+      ov.remove();
+      startGame();
+    });
+
+    actions.appendChild(backBtn);
+    actions.appendChild(replayBtn);
+
+    panel.appendChild(title);
+    panel.appendChild(actions);
+    ov.appendChild(panel);
+    document.body.appendChild(ov);
+  }
+
+  function hideReplayOverlay() {
+    const ov = document.getElementById('replayOverlay');
+    if (ov) ov.remove();
+  }
+
+  function goBackToStart() {
+    hideReplayOverlay();
+    stopGame();
+
+    audioBuffer = null;
+    audioFile   = null;
+    chart       = null;
+    pending     = [];
+    active      = [];
+    pendingIdx  = 0;
+    totalNotes  = 0;
+    longNotes   = 0;
+
+    hintEl.textContent = 'Carregue o ÁUDIO (.ogg) e o CHART (.json) para iniciar o Botplay';
+    hintEl.style.display = 'flex';
+
+    setStatus('Aguardando arquivos…');
+    if (speedInfoEl) speedInfoEl.classList.remove('show');
+    fpsEl.textContent = '-- FPS';
+  }
+
+  function stopGame() {
+    running = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+
+    currentPlayId++;
+
+    if (audioSource) {
+      audioSource.onended = null;
+      try { audioSource.stop(); } catch (e) {}
+      try { audioSource.disconnect(); } catch (e) {}
+      audioSource = null;
+    }
+
+    if (ctx && stageW && stageH) ctx.clearRect(0, 0, stageW, stageH);
+
+    const ov = document.getElementById('startOverlay');
+    if (ov) ov.remove();
+    hideReplayOverlay();
+  }
+
+  function startGame() {
+    if (!audioBuffer || !chart) {
+      setStatus('⚠️ Carregue o ÁUDIO (.ogg) e o CHART (.json) primeiro');
+      return;
+    }
+
+    stopGame();
+    layout();
+
+    pending = chart.notes;
+    for (let i = 0; i < pending.length; i++) pending[i].hit = false;
+
+    active     = [];
+    pendingIdx = 0;
+    totalNotes = pending.length;
+    longNotes  = chart.longCount || 0;
+
+    hintEl.style.display = 'none';
+
+    const c = getAudioContext();
+    if (c.state === 'suspended') {
+      c.resume().then(function () {
+        if (c.state === 'running') actuallyStart();
+        else { setStatus('⚠️ Clique em INICIAR'); showStartOverlay(); }
+      }).catch(function () {
+        setStatus('⚠️ Clique em INICIAR'); showStartOverlay();
+      });
+    } else {
+      actuallyStart();
+    }
+  }
+
+  function actuallyStart() {
+    try {
+      const c = getAudioContext();
+      audioStartT = c.currentTime + 0.08;
+
+      const myId = ++currentPlayId;
+
+      audioSource = c.createBufferSource();
+      audioSource.buffer = audioBuffer;
+      audioSource.connect(c.destination);
+      audioSource.start(audioStartT);
+      audioSource.onended = function () {
+        if (myId !== currentPlayId) return;
+        onAudioEnded();
+      };
+
+      running = true;
+      fpsFrames = 0;
+      fpsLastTime = performance.now();
+      fpsEl.textContent = '-- FPS';
+
+      setStatus('▶ ' + chart.name + ' — BOTPLAY (' +
+        fmtNum(totalNotes) + ' notas' +
+        (longNotes ? ', ' + fmtNum(longNotes) + ' longas' : '') +
+        ' · speed ' + currentSpeed.toFixed(2) + ')');
+      updateSpeedInfo();
+      rafId = requestAnimationFrame(loop);
+    } catch (err) {
+      console.error('[Play]', err);
+      setStatus('❌ Erro ao iniciar áudio: ' + err.message);
+    }
+  }
+
+  function onAudioEnded() {
+    running = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    setStatus('🏁 Música finalizada — escolha Repetir ou Voltar');
+    showReplayOverlay();
+  }
+
+  function songTime() {
+    if (!audioCtx) return 0;
+    return (audioCtx.currentTime - audioStartT) * 1000;
+  }
+
+  function loop(rafTime) {
+    if (!running) return;
+
+    if (!stageW || !stageH) {
+      layout();
+      rafId = requestAnimationFrame(loop);
+      return;
+    }
+
+    fpsFrames++;
+    const elapsed = rafTime - fpsLastTime;
+    if (elapsed >= 500) {
+      const fps = Math.round(fpsFrames * 1000 / elapsed);
+      fpsFrames = 0;
+      fpsLastTime = rafTime;
+      fpsEl.textContent = fps + ' FPS · ' + fmtNum(active.length) + '/' + fmtNum(totalNotes);
+    }
+
+    const now = songTime();
+    const W = stageW, H = stageH;
+
+    /* 1) Spawn */
+    const spawnLimit = now + APPROACH_MS;
+    while (pendingIdx < pending.length && pending[pendingIdx].time < spawnLimit) {
+      const n = pending[pendingIdx++];
+      const endTime = n.time + n.sustain;
+      if (endTime >= now - 400) active.push(n);
+    }
+
+    /* =========================================================
+       2) Acertos + compactação in-place
+
+       REGRA NOVA:
+         - Nota TAP acertada  → remove imediatamente
+         - Nota LONGA acertada → PERMANECE no array até o sustain
+                                 terminar (time + sustain <= now)
+                                 para o rastro continuar aparecendo
+       ========================================================= */
+    let w = 0;
+    for (let r = 0; r < active.length; r++) {
+      const n = active[r];
+
+      if (!n.hit && n.time <= now) {
+        n.hit = true;
+      }
+
+      if (!n.hit) {
+        // Ainda não acertou → fica
+        active[w++] = n;
+      } else if (n.sustain > 0 && n.time + n.sustain > now) {
+        // Acertou MAS sustain ainda tocando → fica (para desenhar rastro)
+        active[w++] = n;
+      }
+      // Senão: tap acertada OU sustain terminado → remove
+    }
+    active.length = w;
+
+    /* 3) Render */
+    ctx.clearRect(0, 0, W, H);
+
+    /* 3a) SUSTAINS — clipados em RECEPTOR_TOP.
+       Como notas longas continuam no array após o acerto, o rastro
+       aparece até o sustain acabar (o receptor "engole" a nota).      */
+    const sustainW = SUSTAIN_W;
+    const sustainOff = SUSTAIN_SX_OFF;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, RECEPTOR_TOP, W, H - RECEPTOR_TOP);
+    ctx.clip();
+
+    for (let k = 0; k < active.length; k++) {
+      const n = active[k];
+      if (!n.sustain) continue;
+
+      const y_head = RECEPTOR_TOP + (n.time - now) * PX_PER_MS;
+      const y_tail = y_head + n.sustain * PX_PER_MS;
+
+      if (y_tail < RECEPTOR_TOP) continue;   // cauda acima do receptor
+      if (y_head > H) continue;              // cabeça abaixo da tela
+
+      const trailStartY = y_head > RECEPTOR_TOP ? y_head : RECEPTOR_TOP;
+      const trailEndY   = y_tail < H ? y_tail : H;
+      if (trailEndY <= trailStartY) continue;
+
+      const sx = laneX[n.side][n.dir] + sustainOff;
+
+      ctx.fillStyle = COLORS[n.dir];
+      ctx.fillRect(sx, trailStartY, sustainW, trailEndY - trailStartY);
+    }
+    ctx.restore();
+
+    /* 3b) Receptores cinzas (fundo) */
+    for (let s = 0; s < 2; s++) {
+      const side = SIDE_KEYS[s];
+      const xs   = laneX[side];
+      for (let d = 0; d < 4; d++) {
+        ctx.drawImage(receptorSprites[d], xs[d], RECEPTOR_TOP, ARROW_SIZE, ARROW_SIZE);
+      }
+    }
+
+    /* 3c) Cabeças das notas (por cima do receptor).
+       Pula notas já acertadas — só o rastro continua visível.           */
+    for (let k = 0; k < active.length; k++) {
+      const n = active[k];
+      if (n.hit) continue;                   // cabeça já consumida
+
+      const y = RECEPTOR_TOP + (n.time - now) * PX_PER_MS;
+      if (y > H || y + ARROW_SIZE < 0) continue;
+
+      ctx.drawImage(arrowSprites[n.dir], laneX[n.side][n.dir], y, ARROW_SIZE, ARROW_SIZE);
+    }
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  btnReplay.addEventListener('click', function () {
+    if (!audioBuffer || !chart) {
+      setStatus('⚠️ Carregue o ÁUDIO e o CHART primeiro');
+      return;
+    }
+    startGame();
+  });
+
+  function fsSupported() {
+    return !!(document.documentElement.requestFullscreen ||
+              document.documentElement.webkitRequestFullscreen ||
+              document.documentElement.mozRequestFullScreen ||
+              document.documentElement.msRequestFullscreen);
+  }
+
+  function isFullscreen() {
+    return !!(document.fullscreenElement ||
+              document.webkitFullscreenElement ||
+              document.mozFullScreenElement ||
+              document.msFullscreenElement);
+  }
+
+  function requestFs() {
+    const el = document.documentElement;
+    const fn = el.requestFullscreen || el.webkitRequestFullscreen ||
+               el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (fn) {
+      try {
+        const p = fn.call(el);
+        if (p && p.catch) p.catch(function () {
+          setStatus('⚠️ Tela cheia bloqueada pelo navegador');
+        });
+      } catch (e) {}
+    }
+  }
+
+  function exitFs() {
+    const fn = document.exitFullscreen || document.webkitExitFullscreen ||
+               document.mozCancelFullScreen || document.msExitFullscreen;
+    if (fn) {
+      try {
+        const p = fn.call(document);
+        if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
+    }
+  }
+
+  function updateFullscreenButton() {
+    const label = btnFs.querySelector('.full-label');
+    const fs = isFullscreen();
+    if (label) label.textContent = fs ? 'Tela normal' : 'Tela cheia';
+    btnFs.title = fs ? 'Sair da tela cheia' : 'Entrar em tela cheia';
+  }
+
+  btnFs.addEventListener('click', function () {
+    if (isFullscreen()) exitFs();
+    else                requestFs();
+  });
+
+  function onFullscreenChange() {
+    updateFullscreenButton();
+    setTimeout(layout, 220);
+  }
+
+  document.addEventListener('fullscreenchange',       onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+  document.addEventListener('mozfullscreenchange',    onFullscreenChange);
+  document.addEventListener('MSFullscreenChange',     onFullscreenChange);
+
+  if (!fsSupported()) btnFs.style.display = 'none';
+  else updateFullscreenButton();
+
+  let resizeTimer = 0;
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { layout(); }, 100);
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', function () { setTimeout(layout, 180); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+
+  lblAudio.addEventListener('click', function () { unlockAudio(); });
+  lblChart.addEventListener('click', function () { unlockAudio(); });
+
+  layout();
+
+})();
+</script>
+</body>
+</html>
